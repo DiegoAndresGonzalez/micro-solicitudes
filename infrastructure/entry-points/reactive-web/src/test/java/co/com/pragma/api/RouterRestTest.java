@@ -1,60 +1,76 @@
 package co.com.pragma.api;
 
-import org.assertj.core.api.Assertions;
+import co.com.pragma.api.dto.LoanRequestDto;
+import co.com.pragma.api.dto.LoanResponseDto;
+import co.com.pragma.api.mapper.RequestDtoMapper;
+import co.com.pragma.model.request.Request;
+import co.com.pragma.usecase.petition.UseCase;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest;
+import org.mockito.Mockito;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.web.reactive.server.WebTestClient;
+import reactor.core.publisher.Mono;
 
-@ContextConfiguration(classes = {RouterRest.class, Handler.class})
-@WebFluxTest
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
+
 class RouterRestTest {
 
-    @Autowired
+    private UseCase useCase;
+    private RequestDtoMapper requestDtoMapper;
     private WebTestClient webTestClient;
 
-    @Test
-    void testListenGETUseCase() {
-        webTestClient.get()
-                .uri("/api/usecase/path")
-                .accept(MediaType.APPLICATION_JSON)
-                .exchange()
-                .expectStatus().isOk()
-                .expectBody(String.class)
-                .value(userResponse -> {
-                            Assertions.assertThat(userResponse).isEmpty();
-                        }
-                );
+    private LoanRequestDto buildLoanRequestDto() {
+        return new LoanRequestDto("cliente@test.com", 1L, "12 meses", 5000);
+    }
+
+    private Request buildRequest() {
+        return Request.builder()
+                .id(1L)
+                .email("cliente@test.com")
+                .loanTypeId(1L)
+                .loanTerm("12 meses")
+                .amount(5000)
+                .build();
+    }
+
+    private LoanResponseDto buildLoanResponseDto() {
+        return new LoanResponseDto(1L, "5000", "12 meses", "cliente@test.com");
+    }
+
+    @BeforeEach
+    void setUp() {
+        useCase = Mockito.mock(UseCase.class);
+        requestDtoMapper = Mockito.mock(RequestDtoMapper.class);
+
+        Handler handler = new Handler(useCase, requestDtoMapper);
+        RouterRest routerRest = new RouterRest();
+
+        webTestClient = WebTestClient.bindToRouterFunction(routerRest.routerFunction(handler)).build();
     }
 
     @Test
-    void testListenGETOtherUseCase() {
-        webTestClient.get()
-                .uri("/api/otherusercase/path")
-                .accept(MediaType.APPLICATION_JSON)
-                .exchange()
-                .expectStatus().isOk()
-                .expectBody(String.class)
-                .value(userResponse -> {
-                            Assertions.assertThat(userResponse).isEmpty();
-                        }
-                );
-    }
+    void createLoanRequest_success() {
+        LoanRequestDto requestDto = buildLoanRequestDto();
+        Request request = buildRequest();
+        LoanResponseDto responseDto = buildLoanResponseDto();
 
-    @Test
-    void testListenPOSTUseCase() {
+        when(requestDtoMapper.toModel(any(LoanRequestDto.class))).thenReturn(request);
+        when(useCase.createRequest(any(Request.class), any(String.class))).thenReturn(Mono.just(request));
+        when(requestDtoMapper.toResponse(any(Request.class))).thenReturn(responseDto);
+
         webTestClient.post()
-                .uri("/api/usecase/otherpath")
-                .accept(MediaType.APPLICATION_JSON)
-                .bodyValue("")
+                .uri("/api/v1/solicitud")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(requestDto)
                 .exchange()
-                .expectStatus().isOk()
-                .expectBody(String.class)
-                .value(userResponse -> {
-                            Assertions.assertThat(userResponse).isEmpty();
-                        }
-                );
+                .expectStatus().isCreated()
+                .expectHeader().contentType(MediaType.APPLICATION_JSON)
+                .expectBody()
+                .jsonPath("$.id").isEqualTo(1)
+                .jsonPath("$.amount").isEqualTo("5000")
+                .jsonPath("$.loanTerm").isEqualTo("12 meses")
+                .jsonPath("$.email").isEqualTo("cliente@test.com");
     }
 }
