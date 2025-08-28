@@ -1,4 +1,4 @@
-package co.com.pragma.model.petition;
+package co.com.pragma.model.request;
 import lombok.Builder;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -10,11 +10,12 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder(toBuilder = true)
-public class Petition {
+public class Request {
 
     private Long id;
     private Integer amount;
     private String email;
+    private String loanTerm;
     private Long statusId;
     private Long loanTypeId;
 
