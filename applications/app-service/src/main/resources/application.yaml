@@ -58,3 +58,6 @@ adapters:
     schema: public
     username: postgres
     password: 1234
+security:
+  jwt:
+    secret: "797feaf1c008f539810d65e6d7d6eff0"

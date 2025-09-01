@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.reactive.function.server.ServerResponse;
@@ -23,9 +24,19 @@ public class Handler {
 
     public Mono<ServerResponse> createLoanRequest(ServerRequest request) {
         log.info(Constants.LOG_LOAN_REQUEST);
-        return request.bodyToMono(LoanRequestDto.class)
-                .flatMap(dto -> useCase.createRequest
-                        (requestDtoMapper.toModel(dto), dto.documentId()))
+        return request.principal()
+                .cast(Authentication.class)
+                .flatMap(auth ->
+                        request.bodyToMono(LoanRequestDto.class)
+                                .flatMap(dto -> {
+                                    String emailFromToken = auth.getName();
+                                    return useCase.createRequest(
+                                            requestDtoMapper.toModel(dto),
+                                            dto.documentId(),
+                                            emailFromToken
+                                    );
+                                })
+                )
                 .doOnNext(req -> log.info(Constants.LOG_SUCCESSFUL_REQUEST))
                 .doOnError(err -> log.error(Constants.LOG_ERROR_HANDLER, err.getMessage()))
                 .flatMap(req -> ServerResponse.status(HttpStatus.CREATED)
