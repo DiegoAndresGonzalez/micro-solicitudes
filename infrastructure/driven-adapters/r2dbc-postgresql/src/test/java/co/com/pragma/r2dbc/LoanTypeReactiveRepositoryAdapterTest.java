@@ -71,6 +71,6 @@ class LoanTypeReactiveRepositoryAdapterTest {
         Mono<LoanType> result = repositoryAdapter.findById(99L);
 
         StepVerifier.create(result)
-                .verifyComplete(); // no emitió nada
+                .verifyComplete();
     }
 }

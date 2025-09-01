@@ -20,17 +20,23 @@ public class UseCase {
     private final StatusRepository statusRepository;
     private final RequestRepository requestRepository;
 
-    public Mono<Request> createRequest(Request request, String documentId) {
+    public Mono<Request> createRequest(Request request, String documentId, String emailFromToken) {
         validateRequestData(request, documentId);
-        return validateUserExistence(request, documentId)
-                .flatMap(validatedRequest ->
-                        Mono.zip(
-                                validateLoanType(validatedRequest),
-                                validateStatus(validatedRequest)
-                        ).map(tuple -> validatedRequest)
-                )
-                .flatMap(requestRepository::createRequest);
+
+        return userGateway.findUserByDocumentId(documentId)
+                .flatMap(userEmail -> {
+                    if (!userEmail.equals(emailFromToken)) {
+                        return Mono.error(new InvalidDataException("El usuario autenticado no coincide con el documento"));
+                    }
+                    request.setEmail(userEmail);
+                    return Mono.zip(
+                                    validateLoanType(request),
+                                    validateStatus(request)
+                            ).map(tuple -> request)
+                            .flatMap(requestRepository::createRequest);
+                });
     }
+
 
     private void validateRequestData(Request request, String documentId) {
         if (request == null ||
@@ -38,7 +44,7 @@ public class UseCase {
                 request.getLoanTypeId() == null ||
                 request.getLoanTerm() == null || request.getLoanTerm().isBlank() ||
                 request.getAmount() == null || request.getAmount() <= Constants.NUMBER_ZERO) {
-            throw new InvalidDataException(Constants.INVALID_DATA);
+            Mono.error(new InvalidDataException(Constants.INVALID_DATA));
         }
     }
 
