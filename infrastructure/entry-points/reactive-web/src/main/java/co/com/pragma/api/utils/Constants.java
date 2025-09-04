@@ -7,5 +7,9 @@ public class Constants {
     public static final String LOG_SUCCESSFUL_REQUEST = "Solicitud completada con exito.";
     public static final String INTERNAL_SERVER_ERROR = "Internal server error.";
     public static final String MESSAGE = "Mensaje";
+    public static final String PAGE = "page";
+    public static final String SIZE = "size";
+    public static final Integer ZERO_DEFAULT = 0;
+    public static final Integer TEN_DEFAULT = 10;
 
 }

@@ -4,6 +4,7 @@ import co.com.pragma.api.exceptions.InvalidConsumeException;
 import co.com.pragma.api.utils.Constants;
 import co.com.pragma.usecase.petition.exceptions.InvalidDataException;
 import co.com.pragma.usecase.petition.exceptions.LoanTypeNotFoundException;
+import co.com.pragma.usecase.petition.exceptions.RequestException;
 import co.com.pragma.usecase.petition.exceptions.StatusNotFoundException;
 import org.springframework.boot.autoconfigure.web.WebProperties;
 import org.springframework.boot.autoconfigure.web.reactive.error.AbstractErrorWebExceptionHandler;
@@ -33,10 +34,11 @@ public class GlobalExceptionHandler extends AbstractErrorWebExceptionHandler {
 
     private final Map<Class<? extends Throwable>, HttpStatus> exceptionToStatus = Map.of(
             InvalidDataException.class, HttpStatus.BAD_REQUEST,
-            LoanTypeNotFoundException.class, HttpStatus.BAD_REQUEST,
-            StatusNotFoundException.class, HttpStatus.BAD_REQUEST,
+            LoanTypeNotFoundException.class, HttpStatus.NOT_FOUND,
+            StatusNotFoundException.class, HttpStatus.NOT_FOUND,
             InvalidConsumeException.class, HttpStatus.BAD_REQUEST,
-            WebClientResponseException.BadRequest.class, HttpStatus.BAD_REQUEST
+            WebClientResponseException.BadRequest.class, HttpStatus.BAD_REQUEST,
+            RequestException.class, HttpStatus.BAD_REQUEST
     );
 
     private Mono<ServerResponse> renderErrorResponse(ServerRequest request) {
