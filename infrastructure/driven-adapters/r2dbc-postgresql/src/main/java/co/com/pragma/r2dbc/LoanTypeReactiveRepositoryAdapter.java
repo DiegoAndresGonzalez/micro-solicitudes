@@ -6,6 +6,7 @@ import co.com.pragma.r2dbc.entity.LoanTypeEntity;
 import co.com.pragma.r2dbc.helper.ReactiveAdapterOperations;
 import org.reactivecommons.utils.ObjectMapper;
 import org.springframework.stereotype.Repository;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @Repository
@@ -22,5 +23,11 @@ public class LoanTypeReactiveRepositoryAdapter extends ReactiveAdapterOperations
     @Override
     public Mono<LoanType> findById(Long id) {
         return super.findById(id);
+    }
+
+    @Override
+    public Flux<LoanType> findByAutomaticValidation(Boolean automaticValidation) {
+        return repository.findByAutomaticValidation(automaticValidation)
+                .map(entity -> mapper.map(entity, LoanType.class));
     }
 }

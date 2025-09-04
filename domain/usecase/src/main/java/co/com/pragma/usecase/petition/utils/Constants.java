@@ -11,4 +11,7 @@ public class Constants {
     public static final String USER_NOT_FOUND = "No se encontró ningun usuario con el documento: ";
     public static final String MIN_LOAN_ERROR = "El monto solicitado es menor al minimo permitido: ";
     public static final String MAX_LOAN_ERROR = "El monto solicitado es mayor al maximo permitido: ";
+    public static final String SET_STATUS_REFUSED = "Rechazado";
+    public static final String FAILED_REQUEST = "No fue posible obtener las solicitudes pendientes";
+    public static final String INVALID_PAGINATION = "Parámetros de paginación inválidos";
 }

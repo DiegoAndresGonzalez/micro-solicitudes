@@ -2,6 +2,7 @@ package co.com.pragma.api;
 
 import co.com.pragma.api.dto.LoanRequestDto;
 import co.com.pragma.api.mapper.RequestDtoMapper;
+import co.com.pragma.api.mapper.RequestForReviewMapper;
 import co.com.pragma.api.utils.Constants;
 import co.com.pragma.usecase.petition.UseCase;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +22,7 @@ public class Handler {
 
     private final UseCase useCase;
     private final RequestDtoMapper requestDtoMapper;
+    private final RequestForReviewMapper requestForReviewMapper;
 
     public Mono<ServerResponse> createLoanRequest(ServerRequest request) {
         log.info(Constants.LOG_LOAN_REQUEST);
@@ -42,6 +44,25 @@ public class Handler {
                 .flatMap(req -> ServerResponse.status(HttpStatus.CREATED)
                         .contentType(MediaType.APPLICATION_JSON)
                         .bodyValue(requestDtoMapper.toResponse(req)));
+    }
+
+    public Mono<ServerResponse> listRequestsForReview(ServerRequest request) {
+        int page = request.queryParam(Constants.PAGE)
+                .map(Integer::parseInt)
+                .orElse(Constants.ZERO_DEFAULT);
+
+        int size = request.queryParam(Constants.SIZE)
+                .map(Integer::parseInt)
+                .orElse(Constants.TEN_DEFAULT);
+
+        return useCase.listRequestsForReview(page, size)
+                .map(requestForReviewMapper::toDto)
+                .collectList()
+                .flatMap(dtoList -> ServerResponse.ok()
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .bodyValue(dtoList))
+                .doOnNext(req -> log.info(Constants.LOG_SUCCESSFUL_REQUEST))
+                .doOnError(err -> log.error(Constants.LOG_ERROR_HANDLER));
     }
 
 }
