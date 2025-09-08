@@ -9,8 +9,6 @@ spring:
     console:
       enabled: true
       path: "/h2"
-  profiles:
-    include: null
 management:
   endpoints:
     web:
@@ -28,7 +26,7 @@ cors:
 adapter:
   restconsumer:
     timeout: 5000
-    url: "http://auth-service:8080/api/v1/usuarios/{documentId}"
+    url: "http://localhost:8080/api/v1/usuarios/{documentId}"
 resilience4j:
   circuitbreaker:
     instances:
@@ -52,7 +50,7 @@ resilience4j:
         waitDurationInOpenState: "10s"
 adapters:
   r2dbc:
-    host: host.docker.internal
+    host: localhost
     port: 5432
     database: solicitudes
     schema: public
