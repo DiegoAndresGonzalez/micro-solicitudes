@@ -19,7 +19,7 @@ public class RestConsumer implements UserGateway {
     public Mono<String> findUserByDocumentId(String documentId) {
         return client
                 .get()
-                .uri("http://localhost:8080/api/v1/usuarios/{documentId}", documentId)
+                .uri("http://auth-service:8080/api/v1/usuarios/{documentId}", documentId)
                 .retrieve()
                 .bodyToMono(UserResponse.class)
                 .map(UserResponse::getEmail);
@@ -30,7 +30,7 @@ public class RestConsumer implements UserGateway {
     public Mono<User> findByEmail(String email) {
         return client
                 .get()
-                .uri("http://localhost:8080/api/v1/usuarios/email/{email}", email)
+                .uri("http://auth-service:8080/api/v1/usuarios/email/{email}", email)
                 .retrieve()
                 .bodyToMono(UserResponse.class)
                 .map(mapper::toDomain);
