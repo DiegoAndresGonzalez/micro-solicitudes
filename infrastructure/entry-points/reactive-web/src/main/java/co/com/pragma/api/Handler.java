@@ -1,6 +1,7 @@
 package co.com.pragma.api;
 
 import co.com.pragma.api.dto.LoanRequestDto;
+import co.com.pragma.api.dto.RequestUpdateStatusDto;
 import co.com.pragma.api.mapper.RequestDtoMapper;
 import co.com.pragma.api.mapper.RequestForReviewMapper;
 import co.com.pragma.api.utils.Constants;
@@ -63,6 +64,17 @@ public class Handler {
                         .bodyValue(dtoList))
                 .doOnNext(req -> log.info(Constants.LOG_SUCCESSFUL_REQUEST))
                 .doOnError(err -> log.error(Constants.LOG_ERROR_HANDLER));
+    }
+
+    public Mono<ServerResponse> updateRequestStatus(ServerRequest request) {
+        log.info(Constants.LOG_UPDATE_REQUEST_STATUS);
+        return request.bodyToMono(RequestUpdateStatusDto.class)
+                .flatMap(dto -> useCase.updateRequestStatus(dto.getRequestId(), dto.getDecision()))
+                .flatMap(updatedRequest -> ServerResponse.ok()
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .bodyValue(requestDtoMapper.toResponse(updatedRequest)))
+                .doOnNext(res -> log.info(Constants.LOG_SUCCESSFUL_UPDATE))
+                .doOnError(err -> log.error(Constants.LOG_ERROR_HANDLER, err.getMessage()));
     }
 
 }

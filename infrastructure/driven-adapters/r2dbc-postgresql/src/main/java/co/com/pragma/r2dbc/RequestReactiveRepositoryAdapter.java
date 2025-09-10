@@ -44,4 +44,9 @@ public class RequestReactiveRepositoryAdapter extends ReactiveAdapterOperations<
         return repository.sumApprovedDebtsByEmail(email);
     }
 
+    @Override
+    public Mono<Request> updateRequest(Request request) {
+        return super.save(request);
+    }
+
 }

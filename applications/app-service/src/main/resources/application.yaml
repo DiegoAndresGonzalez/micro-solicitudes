@@ -29,6 +29,10 @@ adapter:
   restconsumer:
     timeout: 5000
     url: "http://auth-service:8080/api/v1/usuarios/{documentId}"
+  sqs:
+    region: "us-east-1"
+    queueUrl: "http://localhost:4566/000000000000/sample"
+    endpoint: "http://localhost:4566 # For localstack only"
 resilience4j:
   circuitbreaker:
     instances:
@@ -52,13 +56,12 @@ resilience4j:
         waitDurationInOpenState: "10s"
 adapters:
   r2dbc:
-    host: host.docker.internal
+    host: "host.docker.internal"
     port: 5432
-    database: solicitudes
-    schema: public
-    username: postgres
+    database: "solicitudes"
+    schema: "public"
+    username: "postgres"
     password: 1234
-
 security:
   jwt:
     secret: "797feaf1c008f539810d65e6d7d6eff0"

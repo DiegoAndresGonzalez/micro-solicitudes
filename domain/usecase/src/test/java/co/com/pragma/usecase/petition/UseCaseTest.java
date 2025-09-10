@@ -2,6 +2,7 @@ package co.com.pragma.usecase.petition;
 
 import co.com.pragma.model.loantype.LoanType;
 import co.com.pragma.model.loantype.gateways.LoanTypeRepository;
+import co.com.pragma.model.notification.gateways.NotificationPublisher;
 import co.com.pragma.model.request.Request;
 import co.com.pragma.model.request.gateways.RequestRepository;
 import co.com.pragma.model.requestforreview.RequestForReview;
@@ -11,7 +12,9 @@ import co.com.pragma.model.user.User;
 import co.com.pragma.model.user.gateways.UserGateway;
 import co.com.pragma.usecase.petition.exceptions.InvalidDataException;
 import co.com.pragma.usecase.petition.exceptions.LoanTypeNotFoundException;
+import co.com.pragma.usecase.petition.exceptions.RequestException;
 import co.com.pragma.usecase.petition.exceptions.StatusNotFoundException;
+import co.com.pragma.usecase.petition.utils.Constants;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
@@ -21,8 +24,18 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
+import java.lang.reflect.Method;
+import java.math.BigDecimal;
 
-import static org.mockito.ArgumentMatchers.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class UseCaseTest {
@@ -39,57 +52,55 @@ class UseCaseTest {
     @Mock
     private RequestRepository requestRepository;
 
+    @Mock
+    private NotificationPublisher notificationPublisher;
+
     @InjectMocks
     private UseCase useCase;
+
+    private Request request;
+    private LoanType loanType;
+    private Status status;
+    private User user;
 
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
-    }
 
-    private Request buildRequest() {
-        Request request = new Request();
-        request.setId(1L);
-        request.setAmount(2000);
-        request.setLoanTerm("12 months");
-        request.setLoanTypeId(1L);
-        return request;
-    }
+        request = Request.builder()
+                .id(1L)
+                .amount(2000)
+                .loanTerm("12 months")
+                .loanTypeId(1L)
+                .statusId(1L)
+                .email("diego@email.com")
+                .build();
 
-    private LoanType buildLoanType() {
-        LoanType loanType = new LoanType();
-        loanType.setId(1L);
-        loanType.setName("Personal");
-        loanType.setMinAmount(1000);
-        loanType.setMaxAmount(5000);
-        loanType.setInterestRate(12);
-        loanType.setAutomaticValidation(true);
-        return loanType;
-    }
+        loanType = LoanType.builder()
+                .id(1L)
+                .name("Personal")
+                .minAmount(1000)
+                .maxAmount(5000)
+                .interestRate(12)
+                .automaticValidation(true)
+                .build();
 
-    private Status buildStatus() {
-        Status status = new Status();
-        status.setId(1L);
-        status.setName("PENDING");
-        status.setDescription("Pending review");
-        return status;
-    }
+        status = Status.builder()
+                .id(1L)
+                .name("PENDING")
+                .description("Pending review")
+                .build();
 
-    private User buildUser() {
-        User user = new User();
-        user.setDocumentId("123");
-        user.setFullName("Diego González");
-        user.setEmail("diego@email.com");
-        user.setBaseSalary(3000.0);
-        return user;
+        user = User.builder()
+                .documentId("123")
+                .fullName("Diego González")
+                .email("diego@email.com")
+                .baseSalary(3000.0)
+                .build();
     }
 
     @Test
     void createRequest_successful() {
-        Request request = buildRequest();
-        LoanType loanType = buildLoanType();
-        Status status = buildStatus();
-
         when(userGateway.findUserByDocumentId("123")).thenReturn(Mono.just("diego@email.com"));
         when(loanTypeRepository.findById(1L)).thenReturn(Mono.just(loanType));
         when(statusRepository.findByName(anyString())).thenReturn(Mono.just(status));
@@ -102,8 +113,6 @@ class UseCaseTest {
 
     @Test
     void createRequest_invalidEmail_shouldFail() {
-        Request request = buildRequest();
-
         when(userGateway.findUserByDocumentId("123")).thenReturn(Mono.just("otro@email.com"));
 
         StepVerifier.create(useCase.createRequest(request, "123", "diego@email.com"))
@@ -113,40 +122,19 @@ class UseCaseTest {
 
     @Test
     void createRequest_loanTypeNotFound_shouldFail() {
-        Request request = Request.builder()
-                .id(1L)
-                .amount(5000)
-                .email("test@example.com")
-                .loanTerm("12")
-                .statusId(1L)
-                .loanTypeId(99L)
-                .build();
+        request.setLoanTypeId(99L);
 
-        when(userGateway.findUserByDocumentId(anyString())).thenReturn(Mono.just("test@example.com"));
-        when(userGateway.findByEmail(anyString())).thenReturn(Mono.just(User.builder()
-                .documentId("123")
-                .fullName("Test User")
-                .email("test@example.com")
-                .baseSalary(2000.0)
-                .build()));
-
+        when(userGateway.findUserByDocumentId(anyString())).thenReturn(Mono.just("diego@email.com"));
         when(loanTypeRepository.findById(99L)).thenReturn(Mono.empty());
+        when(statusRepository.findByName(anyString())).thenReturn(Mono.just(status));
 
-        when(statusRepository.findByName(anyString())).thenReturn(Mono.just(
-                Status.builder().id(1L).name("PENDING").description("Pending").build()
-        ));
-
-        StepVerifier.create(useCase.createRequest(request, "123", "test@example.com"))
+        StepVerifier.create(useCase.createRequest(request, "123", "diego@email.com"))
                 .expectError(LoanTypeNotFoundException.class)
                 .verify();
     }
 
-
     @Test
     void createRequest_statusNotFound_shouldFail() {
-        Request request = buildRequest();
-        LoanType loanType = buildLoanType();
-
         when(userGateway.findUserByDocumentId("123")).thenReturn(Mono.just("diego@email.com"));
         when(loanTypeRepository.findById(1L)).thenReturn(Mono.just(loanType));
         when(statusRepository.findByName(anyString())).thenReturn(Mono.empty());
@@ -158,45 +146,10 @@ class UseCaseTest {
 
     @Test
     void listRequestsForReview_successful() {
-        // Arrange
-        Status status = Status.builder()
-                .id(1L)
-                .name("PENDING")
-                .description("Pendiente de aprobación")
-                .build();
-
-        LoanType loanType = LoanType.builder()
-                .id(10L)
-                .name("Personal")
-                .minAmount(500)
-                .maxAmount(5000)
-                .interestRate(10)
-                .automaticValidation(false)
-                .build();
-
-        User user = User.builder()
-                .documentId("123456")
-                .fullName("Diego González")
-                .email("diego@email.com")
-                .baseSalary(2500.0)
-                .build();
-
-        Request request = Request.builder()
-                .id(100L)
-                .amount(2000)
-                .email(user.getEmail())
-                .loanTerm("12M")
-                .statusId(status.getId())
-                .loanTypeId(loanType.getId())
-                .build();
-
         when(statusRepository.findByName(anyString())).thenReturn(Mono.just(status));
-
         when(loanTypeRepository.findByAutomaticValidation(false)).thenReturn(Flux.just(loanType));
-
         when(requestRepository.findByStatusInOrLoanTypeInAndPaginated(anyList(), anyList(), anyInt(), anyInt()))
                 .thenReturn(Flux.just(request));
-
         when(userGateway.findByEmail(eq(request.getEmail()))).thenReturn(Mono.just(user));
         when(loanTypeRepository.findById(request.getLoanTypeId())).thenReturn(Mono.just(loanType));
         when(statusRepository.findById(request.getStatusId())).thenReturn(Mono.just(status));
@@ -219,6 +172,141 @@ class UseCaseTest {
     void listRequestsForReview_invalidPagination_shouldFail() {
         StepVerifier.create(useCase.listRequestsForReview(-1, 0))
                 .expectError(InvalidDataException.class)
+                .verify();
+    }
+
+    @Test
+    void updateRequestStatus_successful() {
+        when(requestRepository.findById(1L)).thenReturn(Mono.just(request));
+        when(statusRepository.findByName(Constants.STATUS_APPROVED)).thenReturn(Mono.just(status));
+        when(requestRepository.updateRequest(any(Request.class))).thenReturn(Mono.just(request));
+        when(userGateway.findByEmail(request.getEmail())).thenReturn(Mono.just(user));
+        when(loanTypeRepository.findById(request.getLoanTypeId())).thenReturn(Mono.just(loanType));
+        when(notificationPublisher.publishNotification(any())).thenReturn(Mono.empty());
+
+        StepVerifier.create(useCase.updateRequestStatus(1L, Constants.STATUS_APPROVED))
+                .expectNextMatches(r -> r.getId().equals(1L) && r.getStatusId().equals(status.getId()))
+                .verifyComplete();
+
+        verify(notificationPublisher, times(1)).publishNotification(any());
+    }
+
+    @Test
+    void updateRequestStatus_requestNotFound_shouldFail() {
+        when(requestRepository.findById(anyLong())).thenReturn(Mono.empty());
+
+        StepVerifier.create(useCase.updateRequestStatus(99L, Constants.STATUS_APPROVED))
+                .expectErrorMatches(e -> e instanceof RequestException &&
+                        e.getMessage().equals(Constants.REQUEST_NOT_FOUND))
+                .verify();
+    }
+
+    @Test
+    void updateRequestStatus_statusNotFound_shouldFail() {
+        when(requestRepository.findById(1L)).thenReturn(Mono.just(request));
+        when(statusRepository.findByName(Constants.STATUS_APPROVED)).thenReturn(Mono.empty());
+
+        StepVerifier.create(useCase.updateRequestStatus(1L, Constants.STATUS_APPROVED))
+                .expectErrorMatches(e -> e instanceof RequestException &&
+                        e.getMessage().equals(Constants.STATUS_NOT_FOUND))
+                .verify();
+    }
+
+    @Test
+    void validateLoanType_amountBelowMin_shouldFail() {
+        request.setAmount(500);
+
+        when(userGateway.findUserByDocumentId(anyString())).thenReturn(Mono.just("diego@email.com"));
+        when(loanTypeRepository.findById(1L)).thenReturn(Mono.just(loanType));
+        when(statusRepository.findByName(anyString())).thenReturn(Mono.just(status));
+
+        StepVerifier.create(useCase.createRequest(request, "123", "diego@email.com"))
+                .expectError(InvalidDataException.class)
+                .verify();
+    }
+
+
+    @Test
+    void validateLoanType_amountAboveMax_shouldFail() {
+        request.setAmount(6000);
+        when(userGateway.findUserByDocumentId(anyString())).thenReturn(Mono.just("diego@email.com"));
+        when(loanTypeRepository.findById(1L)).thenReturn(Mono.just(loanType));
+        when(statusRepository.findByName(Constants.SET_STATUS_FIRST)).thenReturn(Mono.just(status));
+
+        StepVerifier.create(useCase.createRequest(request, "123", "diego@email.com"))
+                .expectError(InvalidDataException.class)
+                .verify();
+    }
+
+
+    @Test
+    void extractFirstName_nullOrBlank_shouldReturnEmpty() throws Exception {
+        Method method = UseCase.class.getDeclaredMethod("extractFirstName", String.class);
+        method.setAccessible(true);
+
+        String resultNull = (String) method.invoke(useCase, (Object) null);
+        String resultBlank = (String) method.invoke(useCase, "   ");
+
+        assertEquals(Constants.EMPTY, resultNull);
+        assertEquals(Constants.EMPTY, resultBlank);
+    }
+
+    @Test
+    void validateRequestData_nullRequest_shouldFail() {
+        when(userGateway.findUserByDocumentId(anyString())).thenReturn(Mono.just("diego@email.com"));
+        when(loanTypeRepository.findById(anyLong())).thenReturn(Mono.just(loanType));
+        when(statusRepository.findByName(anyString())).thenReturn(Mono.just(status));
+
+        StepVerifier.create(useCase.createRequest(null, "123", "mail"))
+                .expectError(InvalidDataException.class)
+                .verify();
+    }
+
+    @Test
+    void validateRequestData_blankDocumentId_shouldFail() {
+        Request badDocId = Request.builder()
+                .amount(2000)
+                .loanTerm("12 months")
+                .loanTypeId(1L)
+                .statusId(1L)
+                .email("test@email.com")
+                .build();
+        when(userGateway.findUserByDocumentId("")).thenReturn(Mono.empty());
+        StepVerifier.create(useCase.createRequest(badDocId, "", "mail"))
+                .expectError(InvalidDataException.class)
+                .verify();
+    }
+
+    @Test
+    void validateRequestData_zeroAmount_shouldFail() {
+        when(userGateway.findUserByDocumentId("123")).thenReturn(Mono.just("diego@email.com"));
+        when(loanTypeRepository.findById(1L)).thenReturn(Mono.just(loanType));
+        when(statusRepository.findByName(anyString())).thenReturn(Mono.just(status));
+
+        request.setAmount(0);
+        StepVerifier.create(useCase.createRequest(request, "123", "diego@email.com"))
+                .expectError(InvalidDataException.class)
+                .verify();
+    }
+
+    @Test
+    void validateDecision_invalid_shouldFail() {
+        StepVerifier.create(useCase.updateRequestStatus(1L, "UNKNOWN"))
+                .expectErrorMatches(e -> e instanceof RequestException &&
+                        e.getMessage().equals(Constants.INVALID_STATUS_UPDATE))
+                .verify();
+    }
+
+    @Test
+    void listRequestsForReview_repositoryError_shouldFail() {
+        when(statusRepository.findByName(anyString())).thenReturn(Mono.just(status));
+        when(loanTypeRepository.findByAutomaticValidation(false)).thenReturn(Flux.just(loanType));
+        when(requestRepository.findByStatusInOrLoanTypeInAndPaginated(anyList(), anyList(), anyInt(), anyInt()))
+                .thenReturn(Flux.error(new RuntimeException("DB error")));
+
+        StepVerifier.create(useCase.listRequestsForReview(0, 10))
+                .expectErrorMatches(e -> e instanceof RequestException &&
+                        e.getMessage().equals(Constants.FAILED_REQUEST))
                 .verify();
     }
 }

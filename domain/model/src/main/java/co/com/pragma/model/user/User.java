@@ -1,7 +1,5 @@
 package co.com.pragma.model.user;
 import lombok.*;
-//import lombok.NoArgsConstructor;
-
 
 @Getter
 @Setter
