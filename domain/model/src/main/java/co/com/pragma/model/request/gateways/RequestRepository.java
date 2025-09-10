@@ -11,4 +11,6 @@ public interface RequestRepository {
     Mono<Request> createRequest(Request request);
     Flux<Request> findByStatusInOrLoanTypeInAndPaginated(List<Long> statusIds, List<Long> loanTypeIds, int page, int size);
     Mono<Double> sumApprovedDebtsByEmail(String email);
+    Mono<Request> findById(Long id);
+    Mono<Request> updateRequest(Request request);
 }

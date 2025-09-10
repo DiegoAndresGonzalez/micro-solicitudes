@@ -14,4 +14,12 @@ public class Constants {
     public static final String SET_STATUS_REFUSED = "Rechazado";
     public static final String FAILED_REQUEST = "No fue posible obtener las solicitudes pendientes";
     public static final String INVALID_PAGINATION = "Parámetros de paginación inválidos";
+    public static final String REQUEST_NOT_FOUND = "La solicitud no fue encontrada";
+    public static final String STATUS_APPROVED = "Aprobado";
+    public static final String STATUS_REJECTED = "Rechazado";
+    public static final String INVALID_STATUS_UPDATE = "El estado ingresado no existe o es invalido";
+    public static final String SPACE = " ";
+    public static final String EMPTY = "";
+
+
 }

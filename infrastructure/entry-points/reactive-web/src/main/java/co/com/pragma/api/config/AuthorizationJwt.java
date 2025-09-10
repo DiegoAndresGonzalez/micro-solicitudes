@@ -42,6 +42,7 @@ public class AuthorizationJwt {
                                 "/webjars/**"
                         ).permitAll()
                         .pathMatchers(HttpMethod.GET, "/api/v1/solicitud").hasRole("ADVISOR")
+                        .pathMatchers(HttpMethod.PUT, "/api/v1/solicitud").hasRole("ADVISOR")
                         .pathMatchers("/api/v1/solicitud").hasRole("CLIENT")
                         .anyExchange().authenticated()
 
